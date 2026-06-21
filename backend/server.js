@@ -16,9 +16,14 @@ app.use(helmet({
   crossOriginResourcePolicy: false // Allows accessing documents/images directly in browser if needed
 }));
 app.use(cors({
-  origin: '*', // Open for internal intranet deployment, customizable via configurations
+  origin: [
+    'https://m-a-oil.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
