@@ -287,7 +287,7 @@ async function generateInvoicePDF(invoice, stream) {
   doc.font('Helvetica-Bold').fontSize(8.5);
   doc.text('Total', colX[1] + 100, tableBottomY + 4);
   doc.text(`${totalQtySum} ${invoice.products[0]?.productId?.unit || 'Nos'}`, colX[3] + 2, tableBottomY + 4);
-  doc.text(`₹ ${Number(invoice.grandTotal).toFixed(2)}`, colX[6] + 2, tableBottomY + 4, { width: 48, align: 'right' });
+  doc.text(Number(invoice.grandTotal).toFixed(2), colX[6] - 5, tableBottomY + 4, { width: 52, align: 'right' });
 
   // Draw bottom line of Total Row
   const totalRowBottom = tableBottomY + 15;
@@ -434,11 +434,15 @@ async function generateInvoicePDF(invoice, stream) {
   doc.font('Helvetica').fontSize(6.5).text('for M.A. Oil', signatoryX + 5, bottomY + 3, { align: 'right', width: 220 });
   
   // Custom printed signatory signature block
+  const pad = (n) => String(n).padStart(2, '0');
+  const d = new Date(invoice.createdAt || invoice.invoiceDate || Date.now());
+  const dateStr = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +05'30'`;
+
   doc.fontSize(7.5).font('Helvetica-Bold');
-  doc.text('MOHAMMAD TAUSHIF AHMAD', signatoryX + 5, bottomY + 45, { align: 'center', width: 220 });
+  doc.text('MOHAMMAD MUMTAJ', signatoryX + 5, bottomY + 45, { align: 'center', width: 220 });
   doc.fontSize(6).font('Helvetica').fillColor('#666666');
-  doc.text('Digitally signed by MOHAMMAD TAUSHIF AHMAD\nDate: ' + new Date().toISOString().slice(0,10), signatoryX + 5, bottomY + 54, { align: 'center', width: 220 });
-  doc.fillColor('#000000').font('Helvetica-Bold').fontSize(7.5).text('Authorized Signatory', signatoryX + 5, bottomY + 68, { align: 'center', width: 220 });
+  doc.text(`Digitally signed by MOHAMMAD MUMTAJ\nDate: ${dateStr}`, signatoryX + 5, bottomY + 54, { align: 'center', width: 220 });
+  doc.fillColor('#000000').font('Helvetica-Bold').fontSize(7.5).text('Authorised Signatory', signatoryX + 5, bottomY + 68, { align: 'center', width: 220 });
 
   // --- FOOTER ---
   doc.font('Helvetica').fontSize(7.5).fillColor('#666666');
