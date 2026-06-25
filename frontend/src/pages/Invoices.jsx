@@ -50,11 +50,6 @@ const Invoices = () => {
         buyerGSTIN: cust.gstNumber || '',
         buyerState: cust.state || '',
         buyerStateCode: cust.gstNumber ? cust.gstNumber.slice(0, 2) : '',
-        consigneeName: cust.customerName || '',
-        consigneeAddress: cust.address || '',
-        consigneeGSTIN: cust.gstNumber || '',
-        consigneeState: cust.state || '',
-        consigneeStateCode: cust.gstNumber ? cust.gstNumber.slice(0, 2) : '',
       });
       // Auto-detect local vs interstate GST type based on buyer state
       const isLocalState = (cust.state || '').toLowerCase().trim() === 'jharkhand';
@@ -309,11 +304,11 @@ const Invoices = () => {
         buyerGSTIN: values.buyerGSTIN || '',
         buyerState: values.buyerState || '',
         buyerStateCode: values.buyerStateCode || '',
-        consigneeName: values.consigneeName || '',
-        consigneeAddress: values.consigneeAddress || '',
-        consigneeGSTIN: values.consigneeGSTIN || '',
-        consigneeState: values.consigneeState || '',
-        consigneeStateCode: values.consigneeStateCode || '',
+        consigneeName: values.buyerName || '',
+        consigneeAddress: values.buyerAddress || '',
+        consigneeGSTIN: values.buyerGSTIN || '',
+        consigneeState: values.buyerState || '',
+        consigneeStateCode: values.buyerStateCode || '',
         gstType: values.gstType || 'CGST',
         items: invoiceItems.map(item => ({
           productId: item.productId,
@@ -515,81 +510,40 @@ const Invoices = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left" style={{ margin: '12px 0' }}>Client Billing & Shipping Details</Divider>
+          <Divider orientation="left" style={{ margin: '12px 0' }}>Client / Buyer Details</Divider>
+          <Row gutter={16} style={{ marginBottom: '8px' }}>
+            <Col span={12}>
+              <Form.Item name="buyerName" label="Client / Buyer Name" rules={[{ required: true, message: 'Required' }]}>
+                <Input placeholder="Client name" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="buyerGSTIN" label="Client GSTIN" rules={[{ required: true, message: 'Required' }]}>
+                <Input placeholder="e.g. 10AFRPJ8848R1ZJ" onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && val.length >= 2) {
+                    createForm.setFieldsValue({ buyerStateCode: val.slice(0, 2) });
+                  }
+                }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16} style={{ marginBottom: '8px' }}>
+            <Col span={24}>
+              <Form.Item name="buyerAddress" label="Client Delivery / Billing Address" rules={[{ required: true, message: 'Required' }]}>
+                <Input.TextArea rows={2} placeholder="Client address" />
+              </Form.Item>
+            </Col>
+          </Row>
           <Row gutter={16} style={{ marginBottom: '16px' }}>
-            {/* Buyer Column */}
-            <Col span={12} style={{ borderRight: '1px solid #f0f0f0', paddingRight: '16px' }}>
-              <h4 style={{ marginBottom: '12px', color: '#0d47a1' }}>Buyer (Bill to)</h4>
-              <Form.Item name="buyerName" label="Buyer Name" rules={[{ required: true, message: 'Required' }]}>
-                <Input placeholder="Buyer name" />
-              </Form.Item>
-              <Form.Item name="buyerAddress" label="Billing Address" rules={[{ required: true, message: 'Required' }]}>
-                <Input.TextArea rows={2} placeholder="Billing address" />
-              </Form.Item>
-              <Row gutter={8}>
-                <Col span={12}>
-                  <Form.Item name="buyerGSTIN" label="Buyer GSTIN">
-                    <Input placeholder="e.g. 10AFRPJ8848R1ZJ" onChange={(e) => {
-                      const val = e.target.value;
-                      if (val && val.length >= 2) {
-                        createForm.setFieldsValue({ buyerStateCode: val.slice(0, 2) });
-                      }
-                    }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="buyerStateCode" label="State Code">
-                    <Input placeholder="e.g. 10" />
-                  </Form.Item>
-                </Col>
-              </Row>
+            <Col span={12}>
               <Form.Item name="buyerState" label="State Name" rules={[{ required: true, message: 'Required' }]}>
                 <Input placeholder="e.g. Bihar" />
               </Form.Item>
             </Col>
-
-            {/* Consignee Column */}
-            <Col span={12} style={{ paddingLeft: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, color: '#0d47a1' }}>Consignee (Ship to)</h4>
-                <Button size="small" type="dashed" onClick={() => {
-                  const buyer = createForm.getFieldsValue(['buyerName', 'buyerAddress', 'buyerGSTIN', 'buyerState', 'buyerStateCode']);
-                  createForm.setFieldsValue({
-                    consigneeName: buyer.buyerName,
-                    consigneeAddress: buyer.buyerAddress,
-                    consigneeGSTIN: buyer.buyerGSTIN,
-                    consigneeState: buyer.buyerState,
-                    consigneeStateCode: buyer.buyerStateCode
-                  });
-                }}>
-                  Copy Buyer Details
-                </Button>
-              </div>
-              <Form.Item name="consigneeName" label="Consignee Name" rules={[{ required: true, message: 'Required' }]}>
-                <Input placeholder="Consignee name" />
-              </Form.Item>
-              <Form.Item name="consigneeAddress" label="Shipping Address" rules={[{ required: true, message: 'Required' }]}>
-                <Input.TextArea rows={2} placeholder="Shipping address" />
-              </Form.Item>
-              <Row gutter={8}>
-                <Col span={12}>
-                  <Form.Item name="consigneeGSTIN" label="Consignee GSTIN">
-                    <Input placeholder="e.g. 10AFRPJ8848R1ZJ" onChange={(e) => {
-                      const val = e.target.value;
-                      if (val && val.length >= 2) {
-                        createForm.setFieldsValue({ consigneeStateCode: val.slice(0, 2) });
-                      }
-                    }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="consigneeStateCode" label="State Code">
-                    <Input placeholder="e.g. 10" />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Form.Item name="consigneeState" label="State Name" rules={[{ required: true, message: 'Required' }]}>
-                <Input placeholder="e.g. Bihar" />
+            <Col span={12}>
+              <Form.Item name="buyerStateCode" label="State Code" rules={[{ required: true, message: 'Required' }]}>
+                <Input placeholder="e.g. 10" />
               </Form.Item>
             </Col>
           </Row>
