@@ -34,8 +34,12 @@ async function generateInvoicePDF(invoice, stream) {
 
   // Determine GST Taxes Type
   const companyState = (companySettings.stateName || '').toLowerCase().trim();
-  const buyerState = (invoice.customer?.state || '').toLowerCase().trim();
-  const isLocal = companyState === buyerState;
+  const buyerState = (invoice.buyerState || invoice.customer?.state || '').toLowerCase().trim();
+  
+  // gstType choice: CGST, IGST, Total GST
+  const gstType = invoice.gstType || (companyState === buyerState ? 'CGST' : 'IGST');
+  const isCGST = gstType === 'CGST';
+  const isIGST = gstType === 'IGST';
 
   // Generate and draw Barcode at top right (outside grid, y=18)
   try {
@@ -76,13 +80,18 @@ async function generateInvoicePDF(invoice, stream) {
   const consigneeY = startY + 75;
   doc.font('Helvetica-Bold').fontSize(7.5).text('Consignee (Ship to)', startX + 5, consigneeY + 4);
   
-  if (invoice.customer) {
-    doc.font('Helvetica-Bold').text(invoice.customer.customerName, startX + 5, consigneeY + 15);
+  const consigneeNameVal = invoice.consigneeName || invoice.customer?.customerName || '';
+  const consigneeAddrVal = invoice.consigneeAddress || (invoice.customer ? `${invoice.customer.address || ''}, ${invoice.customer.city || ''}` : '');
+  const consigneeGstinVal = invoice.consigneeGSTIN || invoice.customer?.gstNumber || 'N/A';
+  const consigneeStateVal = invoice.consigneeState || invoice.customer?.state || 'N/A';
+  const consigneeStateCodeVal = invoice.consigneeStateCode || (invoice.consigneeGSTIN ? invoice.consigneeGSTIN.slice(0, 2) : '') || (invoice.customer?.gstNumber ? invoice.customer.gstNumber.slice(0, 2) : '') || 'N/A';
+
+  if (consigneeNameVal) {
+    doc.font('Helvetica-Bold').text(consigneeNameVal, startX + 5, consigneeY + 15);
     doc.font('Helvetica');
-    const addr = `${invoice.customer.address}, ${invoice.customer.city}`;
-    doc.text(addr, startX + 5, consigneeY + 25, { width: 240 });
-    doc.text(`GSTIN/UIN: ${invoice.customer.gstNumber || 'N/A'}`, startX + 5, consigneeY + 48);
-    doc.text(`State Name: ${invoice.customer.state || 'N/A'}, Code: ${invoice.customer.gstNumber ? invoice.customer.gstNumber.slice(0, 2) : 'N/A'}`, startX + 5, consigneeY + 58);
+    doc.text(consigneeAddrVal, startX + 5, consigneeY + 25, { width: 240 });
+    doc.text(`GSTIN/UIN: ${consigneeGstinVal}`, startX + 5, consigneeY + 48);
+    doc.text(`State Name: ${consigneeStateVal}, Code: ${consigneeStateCodeVal}`, startX + 5, consigneeY + 58);
   }
 
   // Line separating Consignee Box from Buyer Box
@@ -93,13 +102,18 @@ async function generateInvoicePDF(invoice, stream) {
   const buyerY = consigneeY + 70;
   doc.font('Helvetica-Bold').fontSize(7.5).text('Buyer (Bill to)', startX + 5, buyerY + 4);
 
-  if (invoice.customer) {
-    doc.font('Helvetica-Bold').text(invoice.customer.customerName, startX + 5, buyerY + 15);
+  const buyerNameVal = invoice.buyerName || invoice.customer?.customerName || '';
+  const buyerAddrVal = invoice.buyerAddress || (invoice.customer ? `${invoice.customer.address || ''}, ${invoice.customer.city || ''}` : '');
+  const buyerGstinVal = invoice.buyerGSTIN || invoice.customer?.gstNumber || 'N/A';
+  const buyerStateVal = invoice.buyerState || invoice.customer?.state || 'N/A';
+  const buyerStateCodeVal = invoice.buyerStateCode || (invoice.buyerGSTIN ? invoice.buyerGSTIN.slice(0, 2) : '') || (invoice.customer?.gstNumber ? invoice.customer.gstNumber.slice(0, 2) : '') || 'N/A';
+
+  if (buyerNameVal) {
+    doc.font('Helvetica-Bold').text(buyerNameVal, startX + 5, buyerY + 15);
     doc.font('Helvetica');
-    const addr = `${invoice.customer.address}, ${invoice.customer.city}`;
-    doc.text(addr, startX + 5, buyerY + 25, { width: 240 });
-    doc.text(`GSTIN/UIN: ${invoice.customer.gstNumber || 'N/A'}`, startX + 5, buyerY + 48);
-    doc.text(`State Name: ${invoice.customer.state || 'N/A'}, Code: ${invoice.customer.gstNumber ? invoice.customer.gstNumber.slice(0, 2) : 'N/A'}`, startX + 5, buyerY + 58);
+    doc.text(buyerAddrVal, startX + 5, buyerY + 25, { width: 240 });
+    doc.text(`GSTIN/UIN: ${buyerGstinVal}`, startX + 5, buyerY + 48);
+    doc.text(`State Name: ${buyerStateVal}, Code: ${buyerStateCodeVal}`, startX + 5, buyerY + 58);
   }
 
   // --- LOGISTICS TABLE (RIGHT BOX) ---
@@ -229,11 +243,10 @@ async function generateInvoicePDF(invoice, stream) {
   });
 
   // Calculate and draw GST tax rows inside Description area
-  const gstRate = 18;
   const taxY = currentY + 5;
   doc.font('Helvetica-Bold').fontSize(8.5);
 
-  if (isLocal) {
+  if (isCGST) {
     // Local: CGST @ 9% & SGST @ 9%
     const cgstAmt = Math.round(invoice.subtotal * 0.09 * 100) / 100;
     const sgstAmt = Math.round(invoice.subtotal * 0.09 * 100) / 100;
@@ -245,13 +258,20 @@ async function generateInvoicePDF(invoice, stream) {
     doc.text('Output SGST @ 9%', colX[1] + 100, taxY + 15);
     doc.text('9 %', colX[4] + 10, taxY + 15);
     doc.text(sgstAmt.toFixed(2), colX[6] + 5, taxY + 15, { width: 45, align: 'right' });
-  } else {
+  } else if (isIGST) {
     // Inter-state: IGST @ 18%
     const igstAmt = invoice.gstAmount;
 
     doc.text('Output IGST @ 18%', colX[1] + 100, taxY);
     doc.text('18 %', colX[4] + 10, taxY);
     doc.text(igstAmt.toFixed(2), colX[6] + 5, taxY, { width: 45, align: 'right' });
+  } else {
+    // Total GST @ 18%
+    const totalGstAmt = invoice.gstAmount;
+
+    doc.text('Output GST @ 18%', colX[1] + 100, taxY);
+    doc.text('18 %', colX[4] + 10, taxY);
+    doc.text(totalGstAmt.toFixed(2), colX[6] + 5, taxY, { width: 45, align: 'right' });
   }
 
   // Draw Vertical lines for columns inside table area (height = 250)
@@ -288,8 +308,8 @@ async function generateInvoicePDF(invoice, stream) {
   
   // Choose coordinates and columns for HSN summary based on local vs inter-state
   // If Local (CGST/SGST), we need 7 columns
-  // If Inter-state (IGST), we need 5 columns
-  const hsnColX = isLocal 
+  // If Inter-state (IGST) or Total GST, we need 5 columns
+  const hsnColX = isCGST 
     ? [startX, startX + 80, startX + 160, startX + 220, startX + 300, startX + 360, startX + 440, startX + width] 
     : [startX, startX + 110, startX + 220, startX + 310, startX + 420, startX + width];
 
@@ -304,7 +324,7 @@ async function generateInvoicePDF(invoice, stream) {
   }
 
   // Titles
-  if (isLocal) {
+  if (isCGST) {
     doc.text('HSN/SAC', hsnColX[0] + 5, hsnY + 3);
     doc.text('Taxable Value', hsnColX[1] + 5, hsnY + 3);
     
@@ -326,8 +346,9 @@ async function generateInvoicePDF(invoice, stream) {
     doc.text('HSN/SAC', hsnColX[0] + 5, hsnY + 3);
     doc.text('Taxable Value', hsnColX[1] + 5, hsnY + 3);
 
-    // Integrated Tax header
-    doc.text('Integrated Tax', hsnColX[2] + 25, hsnY + 3);
+    // Integrated Tax or Total GST header
+    const taxLabel = isIGST ? 'Integrated Tax' : 'Total GST';
+    doc.text(taxLabel, hsnColX[2] + 25, hsnY + 3);
     doc.moveTo(hsnColX[2], hsnY + 12).lineTo(hsnColX[4], hsnY + 12).stroke();
     doc.text('Rate', hsnColX[2] + 20, hsnY + 15);
     doc.text('Amount', hsnColX[3] + 30, hsnY + 15);
@@ -352,7 +373,7 @@ async function generateInvoicePDF(invoice, stream) {
     const data = hsnGroups[code];
     const itemTax = Math.round(data.taxable * 0.18 * 100) / 100;
     
-    if (isLocal) {
+    if (isCGST) {
       const halfTax = Math.round(itemTax * 0.5 * 100) / 100;
       doc.text(code, hsnColX[0] + 5, hsnRowY);
       doc.text(data.taxable.toFixed(2), hsnColX[1] + 5, hsnRowY, { width: 70, align: 'right' });
@@ -377,16 +398,16 @@ async function generateInvoicePDF(invoice, stream) {
   // HSN total row text
   doc.font('Helvetica-Bold').fontSize(7.5);
   doc.text('Total', hsnColX[0] + 5, hsnBottomY + 3);
-  doc.text(invoice.subtotal.toFixed(2), hsnColX[1] + 5, hsnBottomY + 3, { width: isLocal ? 70 : 100, align: 'right' });
+  doc.text(invoice.subtotal.toFixed(2), hsnColX[1] + 5, hsnBottomY + 3, { width: isCGST ? 70 : 100, align: 'right' });
   
-  if (isLocal) {
+  if (isCGST) {
     const halfGst = Math.round(invoice.gstAmount * 0.5 * 100) / 100;
     doc.text(halfGst.toFixed(2), hsnColX[3] + 5, hsnBottomY + 3, { width: 70, align: 'right' });
     doc.text(halfGst.toFixed(2), hsnColX[5] + 5, hsnBottomY + 3, { width: 70, align: 'right' });
   } else {
     doc.text(invoice.gstAmount.toFixed(2), hsnColX[3] + 5, hsnBottomY + 3, { width: 100, align: 'right' });
   }
-  doc.text(invoice.gstAmount.toFixed(2), hsnColX[hsnColX.length - 2] + 5, hsnBottomY + 3, { width: isLocal ? 70 : 100, align: 'right' });
+  doc.text(invoice.gstAmount.toFixed(2), hsnColX[hsnColX.length - 2] + 5, hsnBottomY + 3, { width: isCGST ? 70 : 100, align: 'right' });
 
   const hsnTotalBottom = hsnBottomY + 12;
   doc.moveTo(startX, hsnTotalBottom).lineTo(startX + width, hsnTotalBottom).stroke();

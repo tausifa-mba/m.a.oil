@@ -37,6 +37,32 @@ const Invoices = () => {
   const printCanvasRef = useRef(null);
 
   const { user } = useAuth();
+  
+  // Watch the selected gstType to render dynamic GST summary on screen
+  const selectedGstType = Form.useWatch('gstType', createForm) || 'CGST';
+
+  const handleCustomerChange = (customerId) => {
+    const cust = customers.find(c => c._id === customerId);
+    if (cust) {
+      createForm.setFieldsValue({
+        buyerName: cust.customerName || '',
+        buyerAddress: cust.address || '',
+        buyerGSTIN: cust.gstNumber || '',
+        buyerState: cust.state || '',
+        buyerStateCode: cust.gstNumber ? cust.gstNumber.slice(0, 2) : '',
+        consigneeName: cust.customerName || '',
+        consigneeAddress: cust.address || '',
+        consigneeGSTIN: cust.gstNumber || '',
+        consigneeState: cust.state || '',
+        consigneeStateCode: cust.gstNumber ? cust.gstNumber.slice(0, 2) : '',
+      });
+      // Auto-detect local vs interstate GST type based on buyer state
+      const isLocalState = (cust.state || '').toLowerCase().trim() === 'jharkhand';
+      createForm.setFieldsValue({
+        gstType: isLocalState ? 'CGST' : 'IGST'
+      });
+    }
+  };
 
   const fetchInvoices = async (page = 1, searchQuery = '') => {
     setLoading(true);
@@ -101,7 +127,7 @@ const Invoices = () => {
       }
     ]);
     createForm.resetFields();
-    createForm.setFieldsValue({ dispatchType: 'Single' });
+    createForm.setFieldsValue({ dispatchType: 'Single', gstType: 'CGST' });
     setIsCreateOpen(true);
   };
 
@@ -278,6 +304,17 @@ const Invoices = () => {
         dispatchThrough: values.dispatchThrough || '',
         destination: values.destination || '',
         termsOfDelivery: values.termsOfDelivery || '',
+        buyerName: values.buyerName || '',
+        buyerAddress: values.buyerAddress || '',
+        buyerGSTIN: values.buyerGSTIN || '',
+        buyerState: values.buyerState || '',
+        buyerStateCode: values.buyerStateCode || '',
+        consigneeName: values.consigneeName || '',
+        consigneeAddress: values.consigneeAddress || '',
+        consigneeGSTIN: values.consigneeGSTIN || '',
+        consigneeState: values.consigneeState || '',
+        consigneeStateCode: values.consigneeStateCode || '',
+        gstType: values.gstType || 'CGST',
         items: invoiceItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -441,20 +478,29 @@ const Invoices = () => {
           style={{ marginTop: '16px' }}
         >
           <Row gutter={16}>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
                 name="customerId"
                 label="Customer / Client Billed"
                 rules={[{ required: true, message: 'Please select a customer!' }]}
               >
-                <Select placeholder="Billed to..." showSearch optionFilterProp="children">
+                <Select placeholder="Billed to..." showSearch optionFilterProp="children" onChange={handleCustomerChange}>
                   {customers.map(c => (
                     <Option key={c._id} value={c._id}>{c.customerName}</Option>
                   ))}
                 </Select>
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
+              <Form.Item name="gstType" label="GST Type Option" rules={[{ required: true, message: 'Required' }]}>
+                <Select placeholder="Select GST structure">
+                  <Option value="CGST">CGST + SGST (9% + 9%)</Option>
+                  <Option value="IGST">IGST (18%)</Option>
+                  <Option value="Total GST">Total GST (18%)</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={6}>
               <Form.Item name="dispatchType" label="Dispatch Mode">
                 <Radio.Group onChange={(e) => setDispatchType(e.target.value)} value={dispatchType}>
                   <Radio.Button value="Single">Single Plant</Radio.Button>
@@ -462,9 +508,88 @@ const Invoices = () => {
                 </Radio.Group>
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item name="invoiceDate" label="Invoice Date">
                 <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider orientation="left" style={{ margin: '12px 0' }}>Client Billing & Shipping Details</Divider>
+          <Row gutter={16} style={{ marginBottom: '16px' }}>
+            {/* Buyer Column */}
+            <Col span={12} style={{ borderRight: '1px solid #f0f0f0', paddingRight: '16px' }}>
+              <h4 style={{ marginBottom: '12px', color: '#0d47a1' }}>Buyer (Bill to)</h4>
+              <Form.Item name="buyerName" label="Buyer Name" rules={[{ required: true, message: 'Required' }]}>
+                <Input placeholder="Buyer name" />
+              </Form.Item>
+              <Form.Item name="buyerAddress" label="Billing Address" rules={[{ required: true, message: 'Required' }]}>
+                <Input.TextArea rows={2} placeholder="Billing address" />
+              </Form.Item>
+              <Row gutter={8}>
+                <Col span={12}>
+                  <Form.Item name="buyerGSTIN" label="Buyer GSTIN">
+                    <Input placeholder="e.g. 10AFRPJ8848R1ZJ" onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && val.length >= 2) {
+                        createForm.setFieldsValue({ buyerStateCode: val.slice(0, 2) });
+                      }
+                    }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="buyerStateCode" label="State Code">
+                    <Input placeholder="e.g. 10" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item name="buyerState" label="State Name" rules={[{ required: true, message: 'Required' }]}>
+                <Input placeholder="e.g. Bihar" />
+              </Form.Item>
+            </Col>
+
+            {/* Consignee Column */}
+            <Col span={12} style={{ paddingLeft: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, color: '#0d47a1' }}>Consignee (Ship to)</h4>
+                <Button size="small" type="dashed" onClick={() => {
+                  const buyer = createForm.getFieldsValue(['buyerName', 'buyerAddress', 'buyerGSTIN', 'buyerState', 'buyerStateCode']);
+                  createForm.setFieldsValue({
+                    consigneeName: buyer.buyerName,
+                    consigneeAddress: buyer.buyerAddress,
+                    consigneeGSTIN: buyer.buyerGSTIN,
+                    consigneeState: buyer.buyerState,
+                    consigneeStateCode: buyer.buyerStateCode
+                  });
+                }}>
+                  Copy Buyer Details
+                </Button>
+              </div>
+              <Form.Item name="consigneeName" label="Consignee Name" rules={[{ required: true, message: 'Required' }]}>
+                <Input placeholder="Consignee name" />
+              </Form.Item>
+              <Form.Item name="consigneeAddress" label="Shipping Address" rules={[{ required: true, message: 'Required' }]}>
+                <Input.TextArea rows={2} placeholder="Shipping address" />
+              </Form.Item>
+              <Row gutter={8}>
+                <Col span={12}>
+                  <Form.Item name="consigneeGSTIN" label="Consignee GSTIN">
+                    <Input placeholder="e.g. 10AFRPJ8848R1ZJ" onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && val.length >= 2) {
+                        createForm.setFieldsValue({ consigneeStateCode: val.slice(0, 2) });
+                      }
+                    }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="consigneeStateCode" label="State Code">
+                    <Input placeholder="e.g. 10" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item name="consigneeState" label="State Name" rules={[{ required: true, message: 'Required' }]}>
+                <Input placeholder="e.g. Bihar" />
               </Form.Item>
             </Col>
           </Row>
@@ -673,10 +798,28 @@ const Invoices = () => {
                   <span style={{ color: '#666' }}>Subtotal:</span>
                   <span style={{ fontWeight: 500 }}>₹{subtotal.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#666' }}>GST (18%):</span>
-                  <span style={{ fontWeight: 500 }}>₹{gstAmount.toFixed(2)}</span>
-                </div>
+                {selectedGstType === 'CGST' ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#666' }}>CGST (9%):</span>
+                      <span style={{ fontWeight: 500 }}>₹{(gstAmount / 2).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#666' }}>SGST (9%):</span>
+                      <span style={{ fontWeight: 500 }}>₹{(gstAmount / 2).toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : selectedGstType === 'IGST' ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>IGST (18%):</span>
+                    <span style={{ fontWeight: 500 }}>₹{gstAmount.toFixed(2)}</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>Total GST (18%):</span>
+                    <span style={{ fontWeight: 500 }}>₹{gstAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <Divider style={{ margin: '8px 0' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontWeight: 'bold', fontSize: '15px' }}>Grand Total (INR):</span>
@@ -746,15 +889,25 @@ const Invoices = () => {
             {/* Billed info */}
             <Row gutter={16} style={{ marginBottom: '20px' }}>
               <Col span={12}>
-                <h5 style={{ color: '#1a237e', margin: '0 0 6px 0', fontSize: '12px' }}>Billed To:</h5>
-                <p style={{ margin: '0 0 2px 0', fontSize: '12px' }}><b>{selectedInvoice.customer?.customerName}</b></p>
-                <p style={{ margin: '0 0 2px 0', fontSize: '11px' }}>Phone: {selectedInvoice.customer?.phone} | Email: {selectedInvoice.customer?.email}</p>
-                <p style={{ margin: '0 0 2px 0', fontSize: '11px' }}>GSTIN: {selectedInvoice.customer?.gstNumber || 'N/A'}</p>
-                <p style={{ margin: '0 0 2px 0', fontSize: '11px', color: '#666' }}>Address: {selectedInvoice.customer?.address}, {selectedInvoice.customer?.city}, {selectedInvoice.customer?.state}</p>
+                <h5 style={{ color: '#1a237e', margin: '0 0 6px 0', fontSize: '12px' }}>Buyer (Bill to):</h5>
+                <p style={{ margin: '0 0 2px 0', fontSize: '12px' }}><b>{selectedInvoice.buyerName || selectedInvoice.customer?.customerName}</b></p>
+                <p style={{ margin: '0 0 2px 0', fontSize: '11px' }}>GSTIN: {selectedInvoice.buyerGSTIN || selectedInvoice.customer?.gstNumber || 'N/A'}</p>
+                <p style={{ margin: '0 0 2px 0', fontSize: '11px', color: '#666' }}>Address: {selectedInvoice.buyerAddress || (selectedInvoice.customer ? `${selectedInvoice.customer.address || ''}, ${selectedInvoice.customer.city || ''}` : '')}</p>
+                <p style={{ margin: '0 0 2px 0', fontSize: '11px' }}>State: {selectedInvoice.buyerState || selectedInvoice.customer?.state || 'N/A'} (Code: {selectedInvoice.buyerStateCode || (selectedInvoice.buyerGSTIN ? selectedInvoice.buyerGSTIN.slice(0, 2) : '') || 'N/A'})</p>
               </Col>
               <Col span={12}>
+                <h5 style={{ color: '#1a237e', margin: '0 0 6px 0', fontSize: '12px' }}>Consignee (Ship to):</h5>
+                <p style={{ margin: '0 0 2px 0', fontSize: '12px' }}><b>{selectedInvoice.consigneeName || selectedInvoice.customer?.customerName}</b></p>
+                <p style={{ margin: '0 0 2px 0', fontSize: '11px' }}>GSTIN: {selectedInvoice.consigneeGSTIN || selectedInvoice.customer?.gstNumber || 'N/A'}</p>
+                <p style={{ margin: '0 0 2px 0', fontSize: '11px', color: '#666' }}>Address: {selectedInvoice.consigneeAddress || (selectedInvoice.customer ? `${selectedInvoice.customer.address || ''}, ${selectedInvoice.customer.city || ''}` : '')}</p>
+                <p style={{ margin: '0 0 2px 0', fontSize: '11px' }}>State: {selectedInvoice.consigneeState || selectedInvoice.customer?.state || 'N/A'} (Code: {selectedInvoice.consigneeStateCode || (selectedInvoice.consigneeGSTIN ? selectedInvoice.consigneeGSTIN.slice(0, 2) : '') || 'N/A'})</p>
+              </Col>
+            </Row>
+
+            <Row gutter={16} style={{ marginBottom: '20px' }}>
+              <Col span={24}>
                 <h5 style={{ color: '#1a237e', margin: '0 0 6px 0', fontSize: '12px' }}>Logistics & References:</h5>
-                <div style={{ fontSize: '11px', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                   {selectedInvoice.referenceNumber && <div><b>Reference No:</b> {selectedInvoice.referenceNumber}</div>}
                   {selectedInvoice.buyerOrderNumber && <div><b>Buyer Order No:</b> {selectedInvoice.buyerOrderNumber}</div>}
                   {selectedInvoice.dispatchNumber && <div><b>Dispatch No:</b> {selectedInvoice.dispatchNumber}</div>}
@@ -838,10 +991,28 @@ const Invoices = () => {
                     <span>Subtotal:</span>
                     <span>₹{Number(selectedInvoice.subtotal).toLocaleString()}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>GST (18%):</span>
-                    <span>₹{Number(selectedInvoice.gstAmount).toLocaleString()}</span>
-                  </div>
+                  {selectedInvoice.gstType === 'CGST' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>CGST (9%):</span>
+                        <span>₹{Number(selectedInvoice.gstAmount / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>SGST (9%):</span>
+                        <span>₹{Number(selectedInvoice.gstAmount / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </>
+                  ) : selectedInvoice.gstType === 'IGST' ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>IGST (18%):</span>
+                      <span>₹{Number(selectedInvoice.gstAmount).toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Total GST (18%):</span>
+                      <span>₹{Number(selectedInvoice.gstAmount).toLocaleString()}</span>
+                    </div>
+                  )}
                   <Divider style={{ margin: '4px 0' }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#0d47a1', fontSize: '13px' }}>
                     <span>Grand Total:</span>

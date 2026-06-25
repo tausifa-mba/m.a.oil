@@ -11,7 +11,31 @@ class InvoiceService {
     session.startTransaction();
 
     try {
-      const { customer, dispatchType, sourcePlantId, items, invoiceDate } = invoiceData;
+      const {
+        customer,
+        dispatchType,
+        sourcePlantId,
+        items,
+        invoiceDate,
+        referenceNumber,
+        buyerOrderNumber,
+        dispatchNumber,
+        vehicleNumber,
+        dispatchThrough,
+        destination,
+        termsOfDelivery,
+        buyerName,
+        buyerAddress,
+        buyerGSTIN,
+        buyerState,
+        buyerStateCode,
+        consigneeName,
+        consigneeAddress,
+        consigneeGSTIN,
+        consigneeState,
+        consigneeStateCode,
+        gstType
+      } = invoiceData;
       const isMulti = dispatchType === 'Multi';
 
       if (!items || items.length === 0) {
@@ -86,6 +110,24 @@ class InvoiceService {
         customer,
         dispatchType: dispatchType || 'Single',
         sourcePlantId: isMulti ? undefined : sourcePlantId,
+        referenceNumber: referenceNumber || '',
+        buyerOrderNumber: buyerOrderNumber || '',
+        dispatchNumber: dispatchNumber || '',
+        vehicleNumber: vehicleNumber || '',
+        dispatchThrough: dispatchThrough || '',
+        destination: destination || '',
+        termsOfDelivery: termsOfDelivery || '',
+        buyerName: buyerName || '',
+        buyerAddress: buyerAddress || '',
+        buyerGSTIN: buyerGSTIN || '',
+        buyerState: buyerState || '',
+        buyerStateCode: buyerStateCode || '',
+        consigneeName: consigneeName || '',
+        consigneeAddress: consigneeAddress || '',
+        consigneeGSTIN: consigneeGSTIN || '',
+        consigneeState: consigneeState || '',
+        consigneeStateCode: consigneeStateCode || '',
+        gstType: gstType || 'CGST',
         subtotal,
         gstAmount,
         grandTotal,

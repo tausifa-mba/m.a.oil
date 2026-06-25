@@ -103,6 +103,17 @@ const schemas = {
     dispatchThrough: Joi.string().allow('', null),
     destination: Joi.string().allow('', null),
     termsOfDelivery: Joi.string().allow('', null),
+    buyerName: Joi.string().allow('', null),
+    buyerAddress: Joi.string().allow('', null),
+    buyerGSTIN: Joi.string().allow('', null),
+    buyerState: Joi.string().allow('', null),
+    buyerStateCode: Joi.string().allow('', null),
+    consigneeName: Joi.string().allow('', null),
+    consigneeAddress: Joi.string().allow('', null),
+    consigneeGSTIN: Joi.string().allow('', null),
+    consigneeState: Joi.string().allow('', null),
+    consigneeStateCode: Joi.string().allow('', null),
+    gstType: Joi.string().valid('CGST', 'IGST', 'Total GST').default('CGST'),
     items: Joi.array().items(
       Joi.object({
         productId: Joi.string().hex().length(24).required(),
