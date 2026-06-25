@@ -50,7 +50,7 @@ async function generateInvoicePDF(invoice, stream) {
   }
 
   // Draw main heading text
-  doc.font('Helvetica-Bold').fontSize(11).text('Tax Invoice', 270, 25);
+  doc.font('Helvetica-Bold').fontSize(11).text('Tax Invoice', 40, 25, { align: 'center', width: 515 });
 
   // Main Outer Box coordinates
   const startX = 40;
@@ -193,6 +193,9 @@ async function generateInvoicePDF(invoice, stream) {
     startX + width // End (555)
   ];
 
+  // Draw horizontal box-closing line separating upper boxes from product table
+  doc.moveTo(startX, tableY).lineTo(startX + width, tableY).stroke();
+
   // Draw table header line
   doc.moveTo(startX, tableY + 16).lineTo(startX + width, tableY + 16).stroke();
 
@@ -274,10 +277,11 @@ async function generateInvoicePDF(invoice, stream) {
     doc.text(totalGstAmt.toFixed(2), colX[6] + 5, taxY, { width: 45, align: 'right' });
   }
 
-  // Draw Vertical lines for columns inside table area (height = 250)
+  // Draw Vertical lines for columns inside table area (extending through the Total row)
   const tableBottomY = tableY + 230;
+  const totalRowBottom = tableBottomY + 15;
   for (let i = 1; i < colX.length - 1; i++) {
-    doc.moveTo(colX[i], tableY).lineTo(colX[i], tableBottomY).stroke();
+    doc.moveTo(colX[i], tableY).lineTo(colX[i], totalRowBottom).stroke();
   }
 
   // Draw table bottom horizontal border
@@ -287,7 +291,7 @@ async function generateInvoicePDF(invoice, stream) {
   doc.font('Helvetica-Bold').fontSize(8.5);
   doc.text('Total', colX[1] + 100, tableBottomY + 4);
   doc.text(`${totalQtySum} ${invoice.products[0]?.productId?.unit || 'Nos'}`, colX[3] + 2, tableBottomY + 4);
-  doc.text(Number(invoice.grandTotal).toFixed(2), colX[6] - 5, tableBottomY + 4, { width: 52, align: 'right' });
+  doc.text(Number(invoice.grandTotal).toFixed(2), colX[6] + 5, tableBottomY + 4, { width: 45, align: 'right' });
 
   // Draw bottom line of Total Row
   const totalRowBottom = tableBottomY + 15;
@@ -317,10 +321,11 @@ async function generateInvoicePDF(invoice, stream) {
   doc.moveTo(startX, hsnY + 12).lineTo(startX + width, hsnY + 12).stroke();
   doc.moveTo(startX, hsnY + 24).lineTo(startX + width, hsnY + 24).stroke();
 
-  // Draw HSN Vertical lines
+  // Draw HSN Vertical lines (extending through the HSN Total row)
   const hsnBottomY = hsnY + 50;
+  const hsnTotalBottom = hsnBottomY + 12;
   for (let i = 1; i < hsnColX.length - 1; i++) {
-    doc.moveTo(hsnColX[i], hsnY).lineTo(hsnColX[i], hsnBottomY).stroke();
+    doc.moveTo(hsnColX[i], hsnY).lineTo(hsnColX[i], hsnTotalBottom).stroke();
   }
 
   // Titles
@@ -431,18 +436,42 @@ async function generateInvoicePDF(invoice, stream) {
 
   // Signatory right
   const signatoryX = 320;
-  doc.font('Helvetica').fontSize(6.5).text('for M.A. Oil', signatoryX + 5, bottomY + 3, { align: 'right', width: 220 });
+  const signatoryWidth = 235; // 555 - 320
   
-  // Custom printed signatory signature block
+  // 1. "for [CompanyName]" top-right
+  const signatoryHeader = companySettings.authorizedSignatory || `for ${companySettings.companyName}`;
+  doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000000')
+     .text(signatoryHeader, signatoryX, bottomY + 5, { align: 'right', width: signatoryWidth - 10 });
+  
+  // 2. Background signature watermark curve
+  doc.save();
+  doc.strokeColor('#ffd1d1').lineWidth(1.5);
+  // Drawing a stylized signature curve in the background of details
+  doc.moveTo(signatoryX + 100, bottomY + 45)
+     .bezierCurveTo(signatoryX + 120, bottomY + 25, signatoryX + 150, bottomY + 65, signatoryX + 180, bottomY + 35)
+     .stroke();
+  doc.restore();
+
+  // 3. Left column: Visual representation of name wrapping (as in Image 2)
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000');
+  doc.text('MOHAMM\nAD\nMUMTAJ', signatoryX + 15, bottomY + 28, { width: 70, lineGap: -2 });
+
+  // 4. Right column: Digital signature text details
   const pad = (n) => String(n).padStart(2, '0');
   const d = new Date(invoice.createdAt || invoice.invoiceDate || Date.now());
-  const dateStr = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +05'30'`;
+  const dateStr = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+  const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +05'30'`;
 
-  doc.fontSize(7.5).font('Helvetica-Bold');
-  doc.text('MOHAMMAD MUMTAJ', signatoryX + 5, bottomY + 45, { align: 'center', width: 220 });
-  doc.fontSize(6).font('Helvetica').fillColor('#666666');
-  doc.text(`Digitally signed by MOHAMMAD MUMTAJ\nDate: ${dateStr}`, signatoryX + 5, bottomY + 54, { align: 'center', width: 220 });
-  doc.fillColor('#000000').font('Helvetica-Bold').fontSize(7.5).text('Authorised Signatory', signatoryX + 5, bottomY + 68, { align: 'center', width: 220 });
+  doc.font('Helvetica').fontSize(6.5).fillColor('#333333');
+  doc.text('Digitally signed by ', signatoryX + 90, bottomY + 28, { continued: true });
+  doc.font('Helvetica-Bold').text(signatoryHeader);
+  doc.font('Helvetica-Bold').fontSize(7).text('MOHAMMAD MUMTAJ', signatoryX + 90, bottomY + 36);
+  doc.font('Helvetica').fontSize(6).fillColor('#555555');
+  doc.text(`Date: ${dateStr}\n${timeStr}`, signatoryX + 90, bottomY + 45);
+
+  // 5. Bottom: "Authorised Signatory"
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000');
+  doc.text('Authorised Signatory', signatoryX, bottomY + 85, { align: 'right', width: signatoryWidth - 10 });
 
   // --- FOOTER ---
   doc.font('Helvetica').fontSize(7.5).fillColor('#666666');

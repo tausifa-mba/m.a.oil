@@ -443,7 +443,6 @@ const Products = () => {
               <Form.Item
                 name="purchasePrice"
                 label="Purchase Price (₹)"
-                rules={[{ required: true, message: 'Required' }]}
               >
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
@@ -452,7 +451,6 @@ const Products = () => {
               <Form.Item
                 name="sellingPrice"
                 label="Selling Price (₹)"
-                rules={[{ required: true, message: 'Required' }]}
               >
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>

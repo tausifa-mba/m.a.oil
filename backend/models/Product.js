@@ -6,8 +6,8 @@ const ProductSchema = new mongoose.Schema({
   category: { type: String, required: true, trim: true }, // e.g. Plastic Drum, Lubricant
   materialType: { type: String, required: true, trim: true }, // e.g. HDPE Plastic, Steel, Iron
   capacity: { type: String, required: true, trim: true }, // e.g. 210L, 20L
-  purchasePrice: { type: Number, required: true, min: 0 },
-  sellingPrice: { type: Number, required: true, min: 0 },
+  purchasePrice: { type: Number, default: 0, min: 0 },
+  sellingPrice: { type: Number, default: 0, min: 0 },
   barcode: { type: String, trim: true },
   hsnCode: { type: String, default: '72042590', trim: true },
   minimumStock: { type: Number, required: true, default: 0, min: 0 },

@@ -60,8 +60,8 @@ const schemas = {
     category: Joi.string().required(),
     materialType: Joi.string().required(),
     capacity: Joi.string().required(),
-    purchasePrice: Joi.number().min(0).required(),
-    sellingPrice: Joi.number().min(0).required(),
+    purchasePrice: Joi.number().min(0).optional().default(0),
+    sellingPrice: Joi.number().min(0).optional().default(0),
     barcode: Joi.string().allow('', null),
     hsnCode: Joi.string().allow('', null),
     minimumStock: Joi.number().min(0).default(0),
@@ -190,6 +190,34 @@ const schemas = {
     category: Joi.string().valid('Transport', 'Diesel', 'Labour', 'Electricity', 'Rent', 'Miscellaneous').required(),
     amount: Joi.number().min(0).required(),
     remarks: Joi.string().allow('', null)
+  }),
+
+  creditOrder: Joi.object({
+    customer: Joi.string().hex().length(24).required(),
+    dispatchType: Joi.string().valid('Single', 'Multi').default('Single'),
+    sourcePlantId: Joi.string().hex().length(24).when('dispatchType', {
+      is: 'Single',
+      then: Joi.required(),
+      otherwise: Joi.optional().allow('', null)
+    }),
+    orderDate: Joi.date().optional(),
+    referenceNumber: Joi.string().allow('', null),
+    buyerOrderNumber: Joi.string().allow('', null),
+    dispatchNumber: Joi.string().allow('', null),
+    vehicleNumber: Joi.string().allow('', null),
+    dispatchThrough: Joi.string().allow('', null),
+    destination: Joi.string().allow('', null),
+    termsOfDelivery: Joi.string().allow('', null),
+    notes: Joi.string().allow('', null),
+    items: Joi.array().items(Joi.object({
+      productId: Joi.string().hex().length(24).required(),
+      quantity: Joi.number().min(1).required(),
+      rate: Joi.number().min(0).required(),
+      dispatches: Joi.array().items(Joi.object({
+        plantId: Joi.string().hex().length(24).required(),
+        quantity: Joi.number().min(1).required()
+      })).optional()
+    })).min(1).required()
   })
 };
 

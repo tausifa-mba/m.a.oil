@@ -116,4 +116,29 @@ router.get('/cashbook/report', protect, financeController.getCashFlowReport);
 router.get('/reports/:type', protect, reportController.getReport);
 router.get('/dashboard', protect, reportController.getDashboardData);
 
+// --- COMPANY SETTINGS ---
+const CompanySettingsService = require('../services/CompanySettingsService');
+router.get('/settings', protect, async (req, res, next) => {
+  try {
+    const settings = await CompanySettingsService.getSettings();
+    res.status(200).json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+});
+router.put('/settings', protect, authorize('Admin', 'Manager'), async (req, res, next) => {
+  try {
+    const settings = await CompanySettingsService.updateSettings(req.body);
+    res.status(200).json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- CREDIT ORDERS ---
+const creditOrderController = require('../controllers/creditOrderController');
+router.post('/credits', protect, validateRequest(schemas.creditOrder), creditOrderController.createCreditOrder);
+router.get('/credits', protect, creditOrderController.listCreditOrders);
+router.get('/credits/:id', protect, creditOrderController.getCreditOrderById);
+
 module.exports = router;

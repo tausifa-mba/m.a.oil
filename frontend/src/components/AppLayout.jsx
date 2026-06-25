@@ -17,7 +17,9 @@ import {
   BarChartOutlined,
   LogoutOutlined,
   UserOutlined,
-  ShopOutlined
+  ShopOutlined,
+  SettingOutlined,
+  CreditCardOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -73,6 +75,11 @@ const AppLayout = () => {
       label: 'GST Invoices',
     },
     {
+      key: '/credits',
+      icon: <CreditCardOutlined />,
+      label: 'Credit Orders',
+    },
+    {
       key: '/customers',
       icon: <UserOutlined />,
       label: 'Customers',
@@ -116,11 +123,18 @@ const AppLayout = () => {
   );
 
   if (hasRole(['Admin', 'Manager'])) {
-    menuItems.push({
-      key: '/reports',
-      icon: <BarChartOutlined />,
-      label: 'Reports Center',
-    });
+    menuItems.push(
+      {
+        key: '/reports',
+        icon: <BarChartOutlined />,
+        label: 'Reports Center',
+      },
+      {
+        key: '/settings',
+        icon: <SettingOutlined />,
+        label: 'Company Settings',
+      }
+    );
   }
 
   const handleMenuClick = (info) => {

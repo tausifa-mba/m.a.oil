@@ -52,7 +52,8 @@ const Invoices = () => {
         buyerStateCode: cust.gstNumber ? cust.gstNumber.slice(0, 2) : '',
       });
       // Auto-detect local vs interstate GST type based on buyer state
-      const isLocalState = (cust.state || '').toLowerCase().trim() === 'jharkhand';
+      const companyState = (companySettings?.stateName || 'Jharkhand').toLowerCase().trim();
+      const isLocalState = (cust.state || '').toLowerCase().trim() === companyState;
       createForm.setFieldsValue({
         gstType: isLocalState ? 'CGST' : 'IGST'
       });
@@ -78,16 +79,20 @@ const Invoices = () => {
     }
   };
 
+  const [companySettings, setCompanySettings] = useState(null);
+
   const fetchDependencies = async () => {
     try {
-      const [customersRes, plantsRes, productsRes] = await Promise.all([
+      const [customersRes, plantsRes, productsRes, settingsRes] = await Promise.all([
         api.get('/customers?limit=100'),
         api.get('/plants?limit=100'),
-        api.get('/products?limit=100')
+        api.get('/products?limit=100'),
+        api.get('/settings')
       ]);
       if (customersRes.success) setCustomers(customersRes.data || []);
       if (plantsRes.success) setPlants(plantsRes.data || []);
       if (productsRes.success) setProducts(productsRes.data || []);
+      if (settingsRes.success) setCompanySettings(settingsRes.data);
     } catch (err) {
       console.error(err);
     }
@@ -867,7 +872,7 @@ const Invoices = () => {
 
           return (
             <div id="invoice-print-area" style={{
-              fontFamily: '"Courier New", Courier, monospace, Arial, Helvetica',
+              fontFamily: 'Helvetica, Arial, sans-serif',
               fontSize: '11px',
               color: '#000000',
               lineHeight: '1.3',
@@ -897,10 +902,10 @@ const Invoices = () => {
                   
                   {/* Seller Details */}
                   <div style={{ padding: '6px', borderBottom: '1.2px solid #000000', minHeight: '80px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '12px' }}>M.A. OIL</div>
-                    <div>Purani Basti Road Jugsalai, Jamshedpur</div>
-                    <div style={{ marginTop: '4px' }}>GSTIN/UIN: 20AGLPM2087Q1ZY</div>
-                    <div>State Name : Jharkhand, Code : 20</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{companySettings?.companyName || 'M.A. OIL'}</div>
+                    <div>{companySettings?.address || 'Purani Basti Road Jugsalai, Jamshedpur'}</div>
+                    <div style={{ marginTop: '4px' }}>GSTIN/UIN: {companySettings?.gstin || '20AGLPM2087Q1ZY'}</div>
+                    <div>State Name : {companySettings?.stateName || 'Jharkhand'}, Code : {companySettings?.stateCode || '20'}</div>
                   </div>
 
                   {/* Consignee Details */}
@@ -1113,13 +1118,13 @@ const Invoices = () => {
                     </td>
                     <td style={{ borderRight: '1.2px solid #000000' }}></td>
                     <td style={{ borderRight: '1.2px solid #000000' }}></td>
-                    <td style={{ padding: '4px', textAlign: 'right' }}>Rs. {Number(selectedInvoice.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '4px', textAlign: 'right' }}>{Number(selectedInvoice.grandTotal).toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>
 
               {/* Amount in words */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderBottom: '1.2px solid #000000' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderBottom: '1.2px solid #000000', fontFamily: 'Arial, sans-serif' }}>
                 <div>
                   <div style={{ fontSize: '8px', color: '#555' }}>Amount Chargeable (in words)</div>
                   <div style={{ fontWeight: 'bold' }}>{getWords(selectedInvoice.grandTotal)}</div>
@@ -1128,7 +1133,7 @@ const Invoices = () => {
               </div>
 
               {/* HSN Summary Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '1.2px solid #000000', fontSize: '10px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '1.2px solid #000000', fontSize: '10px', fontFamily: 'Arial, sans-serif' }}>
                 <thead>
                   {selectedInvoice.gstType === 'CGST' ? (
                     <>
@@ -1210,52 +1215,85 @@ const Invoices = () => {
               </table>
 
               {/* Tax Amount in words */}
-              <div style={{ padding: '6px', borderBottom: '1.2px solid #000000' }}>
+              <div style={{ padding: '6px', borderBottom: '1.2px solid #000000', fontFamily: 'Arial, sans-serif' }}>
                 <span style={{ fontSize: '8px', color: '#555' }}>Tax Amount (in words) : </span>
                 <span style={{ fontWeight: 'bold' }}>{getWords(selectedInvoice.gstAmount)}</span>
               </div>
 
               {/* Declaration & Signatures */}
-              <div style={{ display: 'grid', gridTemplateColumns: '60% 40%', width: '100%' }}>
-                <div style={{ padding: '6px', borderRight: '1.2px solid #000000', fontSize: '9px' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '8px', color: '#555' }}>Declaration:</div>
-                  <div style={{ marginTop: '2px', lineHeight: '1.2' }}>
-                    We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
-                  </div>
-                </div>
-
-                {/* Signature box mimicking Tally checkmark exactly */}
-                <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', minHeight: '95px', position: 'relative' }}>
-                  <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: '9px' }}>for M.A. Oil</div>
-                  
-                  {/* Digital Signature box */}
-                  <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    border: '1px dashed #d32f2f',
-                    borderRadius: '4px',
-                    backgroundColor: '#fffdfd',
-                    padding: '3px',
-                    margin: '4px 0',
-                    color: '#d32f2f',
-                    fontSize: '8px',
-                    lineHeight: '1.1'
-                  }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '9.5px', textTransform: 'uppercase' }}>MOHAMMAD MUMTAJ</div>
-                    <div style={{ fontSize: '7.5px', color: '#666' }}>
-                      Digitally signed by MOHAMMAD MUMTAJ<br/>
-                      Date: {signatureDateStr}
+              <div style={{ display: 'grid', gridTemplateColumns: '55% 45%', width: '100%' }}>
+                  <div style={{ padding: '6px', borderRight: '1.2px solid #000000', fontSize: '9px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '8px', color: '#555' }}>Declaration:</div>
+                    <div style={{ marginTop: '2px', lineHeight: '1.2' }}>
+                      {companySettings?.declaration || 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.'}
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '9.5px', marginTop: 'auto' }}>
-                    Authorised Signatory
+                  {/* Signature box mimicking Image 2 exactly */}
+                  <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', minHeight: '110px', position: 'relative' }}>
+                    <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: '8px' }}>
+                      {companySettings?.authorizedSignatory || 'for M.A. Oil'}
+                    </div>
+                    
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '35% 65%',
+                      marginTop: '6px',
+                      position: 'relative'
+                    }}>
+                      {/* Visual representation of MOHAMM / AD / MUMTAJ */}
+                      <div style={{
+                        fontWeight: 'bold',
+                        fontSize: '9.5px',
+                        lineHeight: '1.0',
+                        color: '#000000',
+                        whiteSpace: 'pre-line'
+                      }}>
+                        MOHAMM{"\n"}AD{"\n"}MUMTAJ
+                      </div>
+
+                      {/* Digital Signature box with stylized checkmark/curve background */}
+                      <div style={{
+                        fontSize: '7px',
+                        lineHeight: '1.2',
+                        color: '#333333',
+                        paddingLeft: '10px',
+                        position: 'relative',
+                        zIndex: 1
+                      }}>
+                        {/* Simple stylized SVG for the signature wave background */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          zIndex: -1,
+                          opacity: 0.35,
+                          pointerEvents: 'none'
+                        }}>
+                          <svg width="100%" height="100%" viewBox="0 0 100 40">
+                            <path d="M10,25 C30,10 50,35 70,15 S90,20 100,10" fill="none" stroke="#ffd1d1" strokeWidth="1.5" />
+                          </svg>
+                        </div>
+
+                        <div>
+                          Digitally signed by <span style={{ fontWeight: 'bold' }}>{companySettings?.authorizedSignatory || 'for M.A. Oil'}</span>
+                        </div>
+                        <div style={{ fontWeight: 'bold', fontSize: '7.5px', margin: '2px 0' }}>
+                          MOHAMMAD MUMTAJ
+                        </div>
+                        <div style={{ color: '#555555', fontSize: '6.5px' }}>
+                          Date: {signatureDateStr}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: '9px', marginTop: 'auto', paddingTop: '8px' }}>
+                      Authorised Signatory
+                    </div>
                   </div>
                 </div>
-
-              </div>
 
             </div>
           );

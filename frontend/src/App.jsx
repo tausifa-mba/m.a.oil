@@ -16,6 +16,8 @@ import Salaries from './pages/Salaries';
 import Expenses from './pages/Expenses';
 import CashBook from './pages/CashBook';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
+import Credits from './pages/Credits';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Session guard
@@ -62,6 +64,7 @@ function App() {
           <Route path="purchases" element={<Purchases />} />
           <Route path="transfers" element={<Transfers />} />
           <Route path="invoices" element={<Invoices />} />
+          <Route path="credits" element={<Credits />} />
           <Route path="customers" element={<Customers />} />
           <Route path="suppliers" element={<Suppliers />} />
           
@@ -75,6 +78,12 @@ function App() {
           <Route path="reports" element={
             <AdminRoute>
               <Reports />
+            </AdminRoute>
+          } />
+          
+          <Route path="settings" element={
+            <AdminRoute>
+              <Settings />
             </AdminRoute>
           } />
           
